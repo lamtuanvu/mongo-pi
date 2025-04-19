@@ -64,10 +64,10 @@ if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then
   echo "👉 [GitHub Actions] Writing official Ubuntu 24.04 (noble) amd64 sources to /etc/apt/sources.list"
   sudo tee /etc/apt/sources.list >/dev/null <<EOF
 # Ubuntu 24.04 "Noble" AMD64 repositories
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe multiverse
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-updates main universe multiverse
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-security main universe multiverse
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-backports main universe multiverse
+deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu noble main universe multiverse
+deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu noble-updates main universe multiverse
+deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu noble-security main universe multiverse
+deb [arch=amd64] http://azure.archive.ubuntu.com/ubuntu noble-backports main universe multiverse
 EOF
 else
   # Ubuntu AMD64 Main Archive (restrict to amd64 only)
