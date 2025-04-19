@@ -48,11 +48,15 @@ pyenv shell "$PYTHON_VERSION"
 # ---- BACKUP & CLEAN EXISTING SOURCES ----
 # Only modify sources if running in GitHub Actions to ensure clean environment
 if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then
-  echo "👉 [GitHub Actions] Backing up existing APT sources and configuring official Ubuntu mirrors..."
+  echo "👉 [GitHub Actions] Backing up /etc/apt/sources.list..."
   sudo cp /etc/apt/sources.list /etc/apt/sources.list.bak
 
+  # Remove any existing secondary lists first to avoid duplicates/conflicts
+  echo "👉 [GitHub Actions] Removing existing *.list files from /etc/apt/sources.list.d/"
+  sudo rm -f /etc/apt/sources.list.d/*.list
+
   # Overwrite /etc/apt/sources.list with official amd64 Noble repositories
-  echo "👉 [GitHub Actions] Writing official Ubuntu 24.04 (noble) amd64 sources"
+  echo "👉 [GitHub Actions] Writing official Ubuntu 24.04 (noble) amd64 sources to /etc/apt/sources.list"
   sudo tee /etc/apt/sources.list > /dev/null <<EOF
 # Ubuntu 24.04 "Noble" AMD64 repositories
 deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe multiverse
@@ -60,10 +64,6 @@ deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-updates main universe mu
 deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-security main universe multiverse
 deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-backports main universe multiverse
 EOF
-
-  # Remove any existing secondary lists to avoid duplicates
-  echo "👉 [GitHub Actions] Removing existing *.list files from /etc/apt/sources.list.d/"
-  sudo rm -f /etc/apt/sources.list.d/*.list
 else
   echo "👉 Skipping APT source modification (not running in GitHub Actions)"
 fi
