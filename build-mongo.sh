@@ -7,7 +7,7 @@ MONGO_VERSION="r7.0.4"
 COMPILER_VERSION=13
 PYTHON_VERSION="3.11.5"
 BUILD_DIR="$HOME/mongo-build"
-TARGET="$1"  # Options: pi5, pi0-2w, pizero
+TARGET="$1" # Options: pi5, pi0-2w, pizero
 
 # ---- VALIDATE TARGET ----
 if [[ "$TARGET" != "pi5" && "$TARGET" != "pi0-2w" && "$TARGET" != "pizero" ]]; then
@@ -45,6 +45,11 @@ fi
 # Use Python locally for this build directory
 pyenv shell "$PYTHON_VERSION"
 
+# ---- PREPARE APT SOURCES FOR MULTIARCH ----
+echo "👉 Setting up multiarch sources..."
+sudo dpkg --add-architecture arm64
+sudo dpkg --add-architecture armhf
+
 # ---- BACKUP & CLEAN EXISTING SOURCES ----
 # Only modify sources if running in GitHub Actions to ensure clean environment
 if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then
@@ -57,7 +62,7 @@ if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then
 
   # Overwrite /etc/apt/sources.list with official amd64 Noble repositories
   echo "👉 [GitHub Actions] Writing official Ubuntu 24.04 (noble) amd64 sources to /etc/apt/sources.list"
-  sudo tee /etc/apt/sources.list > /dev/null <<EOF
+  sudo tee /etc/apt/sources.list >/dev/null <<EOF
 # Ubuntu 24.04 "Noble" AMD64 repositories
 deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe multiverse
 deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-updates main universe multiverse
@@ -65,27 +70,21 @@ deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-security main universe m
 deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-backports main universe multiverse
 EOF
 else
-  echo "👉 Skipping APT source modification (not running in GitHub Actions)"
-fi
-
-# ---- PREPARE APT SOURCES FOR MULTIARCH ----
-echo "👉 Setting up multiarch sources..."
-sudo dpkg --add-architecture arm64
-sudo dpkg --add-architecture armhf
-
-# Ubuntu AMD64 Main Archive (restrict to amd64 only)
-echo "👉 Configuring AMD64 archive..."
-sudo tee /etc/apt/sources.list.d/ubuntu-amd64-noble.list > /dev/null <<EOF
-# Ubuntu 24.04 "Noble" AMD64 repositories
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe multiverse
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-security main universe multiverse
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-updates main universe multiverse
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-backports main universe multiverse
+  # Ubuntu AMD64 Main Archive (restrict to amd64 only)
+  echo "👉 Configuring AMD64 archive..."
+  sudo tee /etc/apt/sources.list.d/ubuntu-amd64-noble.list >/dev/null <<EOF
+  # Ubuntu 24.04 "Noble" AMD64 repositories
+  deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe multiverse
+  deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-security main universe multiverse
+  deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-updates main universe multiverse
+  deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-backports main universe multiverse
 EOF
+
+fi
 
 # Ubuntu Ports for arm64 and armhf
 echo "👉 Configuring ARM64/ARMHF ports..."
-sudo tee /etc/apt/sources.list.d/ubuntu-ports-noble.list > /dev/null <<EOF
+sudo tee /etc/apt/sources.list.d/ubuntu-ports-noble.list >/dev/null <<EOF
 # Ubuntu 24.04 "Noble" ports for ARM arches
 deb [arch=arm64,armhf] http://ports.ubuntu.com/ubuntu-ports noble main universe multiverse
 deb [arch=arm64,armhf] http://ports.ubuntu.com/ubuntu-ports noble-security main universe multiverse
@@ -95,9 +94,9 @@ EOF
 
 # MongoDB APT Repo (64-bit only)
 echo "👉 Adding MongoDB repository..."
-curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc \
-  | sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
-sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list > /dev/null <<EOF
+curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc |
+  sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
+sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list >/dev/null <<EOF
 # MongoDB 8.0 repository
 deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/8.0 main
 EOF
@@ -133,14 +132,23 @@ pip install -r etc/pip/compile-requirements.txt keyring jsonschema memory_profil
 
 # ---- SET TOOLCHAIN CONFIG ----
 case "$TARGET" in
-  pi5)
-    ARCH=arm64; GCC_PREFIX=aarch64-linux-gnu; CCFLAGS="-march=armv8-a+crc -mtune=cortex-a72";;
-  pi0-2w)
-    ARCH=arm64; GCC_PREFIX=aarch64-linux-gnu; CCFLAGS="-march=armv8-a -mtune=cortex-a53";;
-  pizero)
-    ARCH=armhf; GCC_PREFIX=arm-linux-gnueabihf; CCFLAGS="-march=armv6zk -mfpu=vfp -mfloat-abi=hard";;
+pi5)
+  ARCH=arm64
+  GCC_PREFIX=aarch64-linux-gnu
+  CCFLAGS="-march=armv8-a+crc -mtune=cortex-a72"
+  ;;
+pi0-2w)
+  ARCH=arm64
+  GCC_PREFIX=aarch64-linux-gnu
+  CCFLAGS="-march=armv8-a -mtune=cortex-a53"
+  ;;
+pizero)
+  ARCH=armhf
+  GCC_PREFIX=arm-linux-gnueabihf
+  CCFLAGS="-march=armv6zk -mfpu=vfp -mfloat-abi=hard"
+  ;;
 esac
-CORES=$(($(grep -c ^processor /proc/cpuinfo)-1))
+CORES=$(($(grep -c ^processor /proc/cpuinfo) - 1))
 
 echo "🔧 Configuring build for $TARGET with Python $PYTHON_VERSION..."
 time python buildscripts/scons.py -j$CORES \
@@ -155,7 +163,10 @@ time ninja -f ${GCC_PREFIX}.ninja -j$CORES install-devcore
 
 echo "✂️ Stripping binaries..."
 cd ${GCC_PREFIX}/bin
-for bin in mongo mongod mongos; do mv $bin $bin.debug; ${GCC_PREFIX}-strip $bin.debug -o $bin; done
+for bin in mongo mongod mongos; do
+  mv $bin $bin.debug
+  ${GCC_PREFIX}-strip $bin.debug -o $bin
+done
 
 # ---- PACKAGE OUTPUT ----
 cd ..
