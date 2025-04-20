@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false # Allow other builds to continue if one fails
+      fail-fast: false
       matrix:
         target: [pi5, pizero]
         include:
@@ -25,22 +25,36 @@ jobs:
 
       - name: Extract MONGO_VERSION
         id: get_version
-        run: echo "MONGO_VERSION=$(grep '^MONGO_VERSION=' build-mongo.sh | cut -d'"' -f2)" >> $GITHUB_OUTPUT
+        # Read from build-only.sh now
+        run: echo "MONGO_VERSION=$(grep '^MONGO_VERSION=' build-only.sh | cut -d'"' -f2)" >> $GITHUB_OUTPUT
 
-      - name: Build MongoDB for ${{ matrix.target }}
-        run: ./build-mongo.sh ${{ matrix.target }}
-        # Increase shell timeout if needed (e.g., 3 hours)
+      - name: Build Docker image (runs prepare-env.sh)
+        id: docker_build
+        run: |
+          docker build -t mongo-builder:${{ github.sha }} .
+          echo "image_tag=mongo-builder:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Build MongoDB for ${{ matrix.target }} in Docker (runs build-only.sh)
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -e GITHUB_ACTIONS=true \
+            ${{ steps.docker_build.outputs.image_tag }} \
+            ${{ matrix.target }} # Pass target as command to ENTRYPOINT
         timeout-minutes: 180
 
       - name: Set artifact details
         id: artifact_details
         run: |
           ARTIFACT_NAME="mongodb.${{ matrix.target }}.${{ steps.get_version.outputs.MONGO_VERSION }}.tar.gz"
-          ARTIFACT_PATH="$HOME/mongo-build/mongo/${{ matrix.gcc_prefix }}/$ARTIFACT_NAME"
+          # build-only.sh places output in BUILD_DIR/$GCC_PREFIX
+          # BUILD_DIR in docker is /workspace/build-output
+          ARTIFACT_PATH="${{ github.workspace }}/build-output/${{ matrix.gcc_prefix }}/$ARTIFACT_NAME"
           echo "Checking for artifact at: $ARTIFACT_PATH"
           if [[ ! -f "$ARTIFACT_PATH" ]]; then
             echo "::error::Artifact not found at expected path: $ARTIFACT_PATH"
-            ls -lha "$HOME/mongo-build/mongo/${{ matrix.gcc_prefix }}/"
+            # List the expected parent directory content
+            ls -lha "${{ github.workspace }}/build-output/${{ matrix.gcc_prefix }}/"
             exit 1
           fi
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
@@ -50,5 +64,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get_version.outputs.MONGO_VERSION }}
-          files: ${{ steps.artifact_details.outputs.ARTIFACT_PATH }}
-          # Creates release if tag_name doesn't exist, otherwise adds assets to existing release. 
+          files: ${{ steps.artifact_details.outputs.ARTIFACT_PATH }} 
