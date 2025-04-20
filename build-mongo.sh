@@ -150,13 +150,22 @@ pizero)
 esac
 CORES=$(($(grep -c ^processor /proc/cpuinfo) - 1))
 
+# Add conditional SCons flags based on target
+SCONS_FLAGS=""
+if [[ "$TARGET" == "pi0-2w" ]]; then
+  echo "👉 Disabling WiredTiger ARM CRC32 hardware support for Pi Zero 2 W (Cortex-A53 lacks CRC extension)"
+  SCONS_FLAGS="--use-hardware-crc32=off"
+fi
+
 echo "🔧 Configuring build for $TARGET with Python $PYTHON_VERSION..."
+# The SCONS_FLAGS variable will be empty unless the target is pi0-2w
 time python buildscripts/scons.py -j$CORES \
   AR=/usr/bin/${GCC_PREFIX}-ar CC=/usr/bin/${GCC_PREFIX}-gcc-${COMPILER_VERSION} \
   CXX=/usr/bin/${GCC_PREFIX}-g++-${COMPILER_VERSION} CCFLAGS="$CCFLAGS" \
   --dbg=off --opt=on --link-model=static --disable-warnings-as-errors \
   --linker=gold \
-  --ninja generate-ninja NINJA_PREFIX=${GCC_PREFIX} VARIANT_DIR=${GCC_PREFIX} DESTDIR=${GCC_PREFIX}
+  --ninja generate-ninja NINJA_PREFIX=${GCC_PREFIX} VARIANT_DIR=${GCC_PREFIX} DESTDIR=${GCC_PREFIX} \
+  $SCONS_FLAGS
 
 echo "⚙️ Building MongoDB..."
 time ninja -f ${GCC_PREFIX}.ninja -j$CORES install-devcore
@@ -171,6 +180,6 @@ done
 # ---- PACKAGE OUTPUT ----
 cd ..
 TAR_NAME="mongodb.${TARGET}.${MONGO_VERSION}.tar.gz"
-tar --owner=root --group-root -czvf "$TAR_NAME" LICENSE-Community.txt README.md bin/mongo{d,,s}
+tar --owner=root -czvf "$TAR_NAME" bin/mongo{d,,s}
 
 echo "✅ Build complete! Archive at $(realpath $TAR_NAME)"
