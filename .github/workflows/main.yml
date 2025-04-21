@@ -45,7 +45,7 @@ jobs:
                      /app/prepare-env.sh && \
                      echo '--- Running build-only.sh for ${{ matrix.target }} ---' && \
                      /app/build-only.sh ${{ matrix.target }}"
-        timeout-minutes: 180
+        timeout-minutes: 600
 
       - name: Set artifact details
         id: artifact_details
