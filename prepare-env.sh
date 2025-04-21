@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Script to prepare the build environment for MongoDB cross-compilation
-# Installs dependencies, pyenv, Python, and configures APT.
+# Installs dependencies and configures APT.
 
 set -euo pipefail
 
 # ---- CONFIGURATION ----
-COMPILER_VERSION=13
-PYTHON_VERSION="3.11.5"
+COMPILER_VERSION=12 # Using GCC 12 from Debian 12 base
+# PYTHON_VERSION removed - using system python3
 
 # Determine if sudo is needed
 if [[ "$(id -u)" == "0" ]]; then
@@ -21,49 +21,13 @@ fi
 # ---- INSTALL BASE DEPENDENCIES ----
 echo "👉 Installing base build dependencies via APT..."
 $SUDO apt-get update
-# Dependencies for pyenv and Python build, plus basic tools
+# Keep core tools + cross-compilers. Removed pyenv/python build dependencies.
 $SUDO apt-get install -y \
-  git curl build-essential libssl-dev zlib1g-dev libbz2-dev \
-  libreadline-dev libsqlite3-dev llvm libncurses5-dev libncursesw5-dev \
-  xz-utils tk-dev libffi-dev liblzma-dev python3-openssl \
+  git curl build-essential \
   gcc-${COMPILER_VERSION}-aarch64-linux-gnu g++-${COMPILER_VERSION}-aarch64-linux-gnu \
   gcc-${COMPILER_VERSION}-arm-linux-gnueabihf g++-${COMPILER_VERSION}-arm-linux-gnueabihf
 
-# ---- INSTALL PYENV ----
-if [[ ! -d "$HOME/.pyenv" ]]; then
-  echo "👉 Installing pyenv..."
-  curl https://pyenv.run | bash
-else
-  echo "👉 pyenv already installed."
-fi
-
-# ---- INITIALIZE PYENV (for subsequent steps in this script) ----
-export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
-if command -v pyenv >/dev/null; then
-  eval "$(pyenv init --path)"
-  eval "$(pyenv init -)"
-else
-  echo "ERROR: pyenv command not found after installation attempt."
-  exit 1
-fi
-
-# ---- INSTALL REQUIRED PYTHON ----
-if ! pyenv versions --bare | grep -qx "$PYTHON_VERSION"; then
-  echo "👉 Installing Python $PYTHON_VERSION via pyenv..."
-  pyenv install "$PYTHON_VERSION"
-else
-  echo "👉 Python $PYTHON_VERSION already installed via pyenv."
-fi
-
-echo "👉 Configuring AMD64 archive..."
-sudo tee /etc/apt/sources.list.d/ubuntu-amd64-noble.list >/dev/null <<EOF
-# Ubuntu 24.04 "Noble" AMD64 repositories
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe multiverse
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-security main universe multiverse
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-updates main universe multiverse
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-backports main universe multiverse
-EOF
+# ---- PYENV/PYTHON INSTALL REMOVED ----
 
 # ---- PREPARE APT SOURCES FOR MULTIARCH ----
 echo "👉 Setting up multiarch sources (dpkg --add-architecture)..."

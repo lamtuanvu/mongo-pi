@@ -7,8 +7,8 @@ set -euo pipefail
 
 # ---- CONFIGURATION ----
 MONGO_VERSION="r7.0.4" # Make sure this matches the intended build version
-COMPILER_VERSION=13   # Make sure this matches the compiler installed
-PYTHON_VERSION="3.11.5" # Make sure this matches the python installed by pyenv
+COMPILER_VERSION=12   # Changed to 12 for Debian 12 base
+# PYTHON_VERSION removed - using system python3
 
 # Build directory: Use /workspace/build inside Docker, or $HOME/mongo-build locally
 if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then
@@ -27,22 +27,6 @@ if [[ -z "$TARGET" || ( "$TARGET" != "pi5" && "$TARGET" != "pi0-2w" && "$TARGET"
   exit 1
 fi
 
-# ---- INITIALIZE PYENV (needed if running locally after prepare-env.sh) ----
-if [[ "${GITHUB_ACTIONS:-false}" != "true" ]]; then
-    echo "👉 Initializing pyenv for local execution..."
-    export PYENV_ROOT="$HOME/.pyenv"
-    export PATH="$PYENV_ROOT/bin:$PATH"
-    if command -v pyenv >/dev/null; then
-      eval "$(pyenv init --path)"
-      eval "$(pyenv init -)"
-    else
-        echo "ERROR: pyenv not found. Did you run prepare-env.sh first?"
-        exit 1
-    fi
-    # Ensure the correct Python version is active
-    pyenv shell "$PYTHON_VERSION"
-fi
-
 # ---- CLONE SOURCE ----
 echo "👉 Cloning MongoDB source to $MONGO_SRC_DIR..."
 mkdir -p "$(dirname "$MONGO_SRC_DIR")" # Create parent dir if needed
@@ -53,10 +37,10 @@ fi
 cd "$MONGO_SRC_DIR"
 
 # ---- PYTHON ENV SETUP ----
-echo "👉 Creating Python venv in $MONGO_SRC_DIR/venv..."
+echo "👉 Creating Python venv using system python3..."
 if [[ ! -d venv ]]; then
-  # Use the Python available in the PATH (should be the pyenv one locally, or system one in Docker)
-  python -m venv venv
+  # Use the system python3 (should be 3.11 on Debian 12)
+  python3 -m venv venv
 fi
 source venv/bin/activate
 # Use a pinned version for stability, ensure it's compatible with Python 3.11
@@ -101,7 +85,7 @@ echo "🔧 Configuring build for $TARGET ($GCC_PREFIX) in $TARGET_BUILD_DIR..."
 # Run scons from the source directory
 cd "$MONGO_SRC_DIR"
 
-time python buildscripts/scons.py -j$CORES \
+time python3 buildscripts/scons.py -j$CORES \
   AR=/usr/bin/${GCC_PREFIX}-ar CC=/usr/bin/${GCC_PREFIX}-gcc-${COMPILER_VERSION} \
   CXX=/usr/bin/${GCC_PREFIX}-g++-${COMPILER_VERSION} CCFLAGS="$CCFLAGS" \
   --dbg=off --opt=on --link-model=static --disable-warnings-as-errors \

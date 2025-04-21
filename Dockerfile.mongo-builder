@@ -1,32 +1,33 @@
-# Use Ubuntu 24.04 LTS as the base, which includes GCC 13 by default
-FROM ubuntu:24.04
+# Use Debian 12 (Bookworm) base image
+FROM debian:12-slim
 
 # Avoid interactive prompts during package installations
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install base dependencies needed before running the scripts
-# Add gnupg for potential key operations
+# GCC 12 cross-compilers are installed by prepare-env.sh now
+# Add python3-venv and python3-pip for system Python venv usage
+# Add python3-dev for compiling Python C extensions (like psutil)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo \
     git \
     curl \
     build-essential \
     ca-certificates \
-    software-properties-common \
+    # software-properties-common removed (not needed for Debian)
     gnupg \
+    python3-venv \
+    python3-pip \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
-
-# Removed PPA addition - GCC 13 is in the base image repositories
 
 # Removed user creation and sudo configuration steps
 # We will run the container as root
 
-# Set a temporary WORKDIR for COPY, though scripts could be anywhere
-# We will reference the correct path in the run command
+# Set a temporary WORKDIR for COPY
 WORKDIR /app
 
 # Copy the build scripts into the image
-# Owner doesn't matter as much when running as root
 COPY prepare-env.sh ./prepare-env.sh
 COPY build-only.sh ./build-only.sh
 
