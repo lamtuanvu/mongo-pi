@@ -56,43 +56,29 @@ else
   echo "👉 Python $PYTHON_VERSION already installed via pyenv."
 fi
 
-# ---- APT SOURCE CONFIGURATION ----
-# Only modify sources if running in GitHub Actions to ensure clean environment
-if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then
-  echo "👉 [GitHub Actions] Backing up /etc/apt/sources.list..."
-  $SUDO cp /etc/apt/sources.list /etc/apt/sources.list.bak
-
-  # Remove any existing secondary lists first to avoid duplicates/conflicts
-  echo "👉 [GitHub Actions] Removing existing *.list files from /etc/apt/sources.list.d/"
-  $SUDO rm -f /etc/apt/sources.list.d/*.list
-
-  # Overwrite /etc/apt/sources.list with official amd64 Noble repositories
-  echo "👉 [GitHub Actions] Writing official Ubuntu 24.04 (noble) amd64 sources to /etc/apt/sources.list"
-  # Use cat and pipe to sudo tee to avoid permission issues with redirection
-  cat <<EOF | $SUDO tee /etc/apt/sources.list >/dev/null
+echo "👉 Configuring AMD64 archive..."
+sudo tee /etc/apt/sources.list.d/ubuntu-amd64-noble.list >/dev/null <<EOF
 # Ubuntu 24.04 "Noble" AMD64 repositories
 deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe multiverse
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-updates main universe multiverse
 deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-security main universe multiverse
+deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-updates main universe multiverse
 deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble-backports main universe multiverse
 EOF
-else
-  echo "👉 Skipping APT source modification (not running in GitHub Actions)"
-fi
 
 # ---- PREPARE APT SOURCES FOR MULTIARCH ----
 echo "👉 Setting up multiarch sources (dpkg --add-architecture)..."
 $SUDO dpkg --add-architecture arm64
 $SUDO dpkg --add-architecture armhf
 
-# Ubuntu Ports for arm64 and armhf
-echo "👉 Configuring ARM64/ARMHF ports repository..."
-cat <<EOF | $SUDO tee /etc/apt/sources.list.d/ubuntu-ports-noble.list >/dev/null
-# Ubuntu 24.04 "Noble" ports for ARM arches
-deb [arch=arm64,armhf] http://ports.ubuntu.com/ubuntu-ports noble main universe multiverse
-deb [arch=arm64,armhf] http://ports.ubuntu.com/ubuntu-ports noble-security main universe multiverse
-deb [arch=arm64,armhf] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe multiverse
-deb [arch=arm64,armhf] http://ports.ubuntu.com/ubuntu-ports noble-backports main universe multiverse
+# ---- CONFIGURE DEBIAN REPOS FOR ARM ----
+echo "👉 Configuring Debian 12 (Bookworm) ARM repositories..."
+# You might need to adjust the URL if debian.org has specific ports URLs
+# Or rely on the main archive if it supports multiarch correctly
+sudo tee /etc/apt/sources.list.d/debian-bookworm-arm.list >/dev/null <<EOF
+# Debian 12 "Bookworm" for ARM arches
+deb [arch=arm64,armhf] http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
+deb [arch=arm64,armhf] http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
+deb [arch=arm64,armhf] http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
 EOF
 
 # MongoDB APT Repo

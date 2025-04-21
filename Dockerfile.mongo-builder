@@ -1,0 +1,40 @@
+# Use Ubuntu 24.04 LTS as the base, which includes GCC 13 by default
+FROM ubuntu:24.04
+
+# Avoid interactive prompts during package installations
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install base dependencies needed before running the scripts
+# Add gnupg for potential key operations
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    sudo \
+    git \
+    curl \
+    build-essential \
+    ca-certificates \
+    software-properties-common \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Removed PPA addition - GCC 13 is in the base image repositories
+
+# Removed user creation and sudo configuration steps
+# We will run the container as root
+
+# Set a temporary WORKDIR for COPY, though scripts could be anywhere
+# We will reference the correct path in the run command
+WORKDIR /app
+
+# Copy the build scripts into the image
+# Owner doesn't matter as much when running as root
+COPY prepare-env.sh ./prepare-env.sh
+COPY build-only.sh ./build-only.sh
+
+# Make scripts executable
+RUN chmod +x ./prepare-env.sh ./build-only.sh
+
+# Set final WORKDIR
+WORKDIR /workspace
+
+# Default command (optional, can be overridden)
+# CMD ["/bin/bash"]

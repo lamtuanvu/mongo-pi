@@ -28,19 +28,24 @@ jobs:
         # Read from build-only.sh now
         run: echo "MONGO_VERSION=$(grep '^MONGO_VERSION=' build-only.sh | cut -d'"' -f2)" >> $GITHUB_OUTPUT
 
-      - name: Build Docker image (runs prepare-env.sh)
+      - name: Build Docker image
         id: docker_build
         run: |
-          docker build -t mongo-builder:${{ github.sha }} .
+          docker build -t mongo-builder:${{ github.sha }} -f Dockerfile.mongo-builder .
           echo "image_tag=mongo-builder:${{ github.sha }}" >> $GITHUB_OUTPUT
 
-      - name: Build MongoDB for ${{ matrix.target }} in Docker (runs build-only.sh)
+      - name: Build MongoDB for ${{ matrix.target }} in Docker
         run: |
+          mkdir -p ${{ github.workspace }}/build-output # Ensure output dir exists on runner
           docker run --rm \
-            -v ${{ github.workspace }}:/workspace \
+            -v ${{ github.workspace }}/build-output:/workspace/build-output:rw \
             -e GITHUB_ACTIONS=true \
             ${{ steps.docker_build.outputs.image_tag }} \
-            ${{ matrix.target }} # Pass target as command to ENTRYPOINT
+            bash -c "set -euo pipefail && \
+                     echo '--- Running prepare-env.sh ---' && \
+                     /app/prepare-env.sh && \
+                     echo '--- Running build-only.sh for ${{ matrix.target }} ---' && \
+                     /app/build-only.sh ${{ matrix.target }}"
         timeout-minutes: 180
 
       - name: Set artifact details
