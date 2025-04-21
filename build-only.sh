@@ -84,6 +84,7 @@ cd "$MONGO_SRC_DIR"
 time python3 buildscripts/scons.py -j$CORES \
   AR=/usr/bin/${GCC_PREFIX}-ar CC=/usr/bin/${GCC_PREFIX}-gcc-${COMPILER_VERSION} \
   CXX=/usr/bin/${GCC_PREFIX}-g++-${COMPILER_VERSION} CCFLAGS="$CCFLAGS" \
+  MONGO_TARGET_ARCH=$ARCH \
   --dbg=off --opt=on --link-model=static --disable-warnings-as-errors \
   --linker=gold \
   --ninja generate-ninja NINJA_PREFIX=${GCC_PREFIX} \
