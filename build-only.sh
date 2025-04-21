@@ -91,8 +91,8 @@ time python3 buildscripts/scons.py -j$CORES \
   $SCONS_FLAGS
 
 echo "⚙️ Building MongoDB using Ninja..."
-# Ninja file path is inside VARIANT_DIR, named after NINJA_PREFIX
-time ninja -f "${TARGET_BUILD_DIR}/${GCC_PREFIX}.ninja" -j$CORES install-devcore
+# Ninja file path is generated in MONGO_SRC_DIR, named after NINJA_PREFIX
+time ninja -f "${MONGO_SRC_DIR}/${GCC_PREFIX}.ninja" -j$CORES install-devcore
 
 echo "✂️ Stripping binaries in ${TARGET_BUILD_DIR}/bin..."
 cd "${TARGET_BUILD_DIR}/bin"
