@@ -34,12 +34,10 @@ echo "Host output directory ready."
 # --- Run Build Container ---
 echo "🚀 Running build for target '$TARGET' in Docker container..."
 # Mount the output directory as /workspace/build-output (read-write)
-# Set GITHUB_ACTIONS=true so build-only.sh uses /workspace/build-output
 # Restore original build command - run as root, fix script paths
 docker run --rm \
        --name "$CONTAINER_NAME" \
        -v "$OUTPUT_DIR":/workspace/build-output:rw \
-       -e GITHUB_ACTIONS=true \
        "$IMAGE_NAME" \
        /bin/bash -c "set -euo pipefail && echo '--- Running prepare-env.sh ---' && /app/prepare-env.sh && echo '--- Running build-only.sh ---' && /app/build-only.sh $TARGET"
 

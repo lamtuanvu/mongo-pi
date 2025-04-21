@@ -39,7 +39,6 @@ jobs:
           mkdir -p ${{ github.workspace }}/build-output # Ensure output dir exists on runner
           docker run --rm \
             -v ${{ github.workspace }}/build-output:/workspace/build-output:rw \
-            -e GITHUB_ACTIONS=true \
             ${{ steps.docker_build.outputs.image_tag }} \
             bash -c "set -euo pipefail && \
                      echo '--- Running prepare-env.sh ---' && \

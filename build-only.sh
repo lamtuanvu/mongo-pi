@@ -10,14 +10,10 @@ MONGO_VERSION="r7.0.4" # Make sure this matches the intended build version
 COMPILER_VERSION=12   # Changed to 12 for Debian 12 base
 # PYTHON_VERSION removed - using system python3
 
-# Build directory: Use /workspace/build inside Docker, or $HOME/mongo-build locally
-if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then
-  BUILD_DIR="/workspace/build-output" # Build output within the mounted workspace
-  MONGO_SRC_DIR="/workspace/mongo"    # Source cloned within the mounted workspace
-else
-  BUILD_DIR="$HOME/mongo-build"       # Default local build directory
-  MONGO_SRC_DIR="$BUILD_DIR/mongo"    # Source cloned within the local build directory
-fi
+# Build directory and source directory inside the container
+# These paths are consistent for both local Docker and GitHub Actions runs
+BUILD_DIR="/workspace/build-output" # Build output goes here (maps to host ./output)
+MONGO_SRC_DIR="/workspace/mongo"      # Source will be cloned here
 
 TARGET="$1" # Options: pi5, pi0-2w, pizero
 
@@ -95,8 +91,8 @@ time python3 buildscripts/scons.py -j$CORES \
   $SCONS_FLAGS
 
 echo "⚙️ Building MongoDB using Ninja..."
-# Ninja file path is inside VARIANT_DIR
-time ninja -f "${TARGET_BUILD_DIR}/compile_commands.ninja" -j$CORES install-devcore
+# Ninja file path is inside VARIANT_DIR, named after NINJA_PREFIX
+time ninja -f "${TARGET_BUILD_DIR}/${GCC_PREFIX}.ninja" -j$CORES install-devcore
 
 echo "✂️ Stripping binaries in ${TARGET_BUILD_DIR}/bin..."
 cd "${TARGET_BUILD_DIR}/bin"
