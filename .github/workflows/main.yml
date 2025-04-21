@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [pi5, pizero]
+        target: [pi5, pi0-2w]
         include:
           - target: pi5
             gcc_prefix: aarch64-linux-gnu
