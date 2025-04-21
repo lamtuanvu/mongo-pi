@@ -16,7 +16,7 @@ jobs:
         include:
           - target: pi5
             gcc_prefix: aarch64-linux-gnu
-          - target: pizero
+          - target: pi0-2w
             gcc_prefix: arm-linux-gnueabihf
 
     steps:
